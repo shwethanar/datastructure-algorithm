@@ -1,3 +1,125 @@
 https://stackoverflow.com/questions/22922725/are-pem-and-cer-interchangeble
 https://www.ibm.com/docs/en/cpfs?topic=ldap-configuring-over-ssl
 https://stackoverflow.com/questions/2138940/import-pem-into-java-key-store
+********************************************************************************************************
+
+https://stackoverflow.com/questions/37994315/how-to-create-an-empty-java-trust-store?rq=1
+
+Using keytool, create a random key pair and keystore and then delete the bogus cert:
+---------------------
+
+keytool -genkeypair -alias boguscert -storepass <password> -keystore emptykeystore.jks -dname "CN=Developer, OU=Department 0=Company, L=City, ST=State, C=CA"
+keytool -delete -alias boguscert -storepass storePassword -keystore emptykeystore.jks
+
+Review its contents::
+--------
+keytool -list -storepass <password> -keystore samplekeystore.jks
+
+Add cert:
+--------
+keytool -importcert -file <certificate name> -alias <alias> -storepass <password> -keystore emptykeystore.jks
+
+=========================================================================================
+
+
+
+
+======================================================================================================================
+"C:\Program Files (x86)\Java\jre1.8.0_201\bin\keytool" -genkeypair -alias boguscert1 -storepass cert1pwd -keystore emptykeystore.jks -dname "CN=Developer, OU=Department 0=Company, L=City, ST=State, C=CA"
+
+error for with password : cert1pwd 
+
+"C:\Program Files (x86)\Java\jre1.8.0_201\bin\keytool" -genkeypair -alias boguscert1 -storepass pwd123 -keystore emptykeystore.jks -dname "CN=Developer, OU=Department 0=Company, L=City, ST=State, C=CA"
+
+C:\Users\abc>"C:\Program Files (x86)\Java\jre1.8.0_201\bin\keytool" -genkeypair -alias boguscert1 -storepass pwd123 -keystore emptykeystore.jks -dname "CN=Developer, OU=Department 0=Company, L=City, ST=State, C=CA"
+Enter key password for <boguscert1>
+        (RETURN if same as keystore password):
+Re-enter new password:pwd123
+
+Warning:
+The JKS keystore uses a proprietary format. It is recommended to migrate to PKCS12 which is an industry standard format using "keytool -importkeystore -srckeystore samplekeystore.jks -destkeystore samplekeystore.jks -deststoretype pkcs12".
+
+==========================
+
+"C:\Program Files (x86)\Java\jre1.8.0_201\bin\keytool" -genkeypair -alias cert1 -storepass cert1pwd -keystore keystore.jks -dname "CN=Developer, OU=Department 0=Company, L=City, ST=State, C=CA"
+Enter key password for <cert1> : password1
+"C:\Program Files (x86)\Java\jre1.8.0_201\bin\keytool" -genkeypair -alias cert2 -storepass cert1pwd -keystore keystore.jks 
+"C:\Program Files (x86)\Java\jre1.8.0_201\bin\keytool" -genkeypair -alias cert3 -storepass cert1pwd -keystore keystore.jks -dname "CN=Developer, OU=Department 0=Company, L=City, ST=State, C=CA"
+=========================
+
+"C:\Program Files (x86)\Java\jre1.8.0_201\bin\keytool" -importcert -file "C:\Users\abc\abc.pem" -alias pem1 -storepass cert1pwd -keystore keystore.jks
+
+
+C:\Users\abc>"C:\Program Files (x86)\Java\jre1.8.0_201\bin\keytool" -importcert -file "C:\Users\abc\abc.pem" -alias pem1 -storepass cert1pwd -keystore keystore.jks
+keytool error: java.lang.Exception: Input not an X.509 certificate
+
+
+SOLUTION:
+
+Does your cacerts.pem file hold a single certificate? Since it is a PEM, have a look at it (with a text editor), it should start with
+
+-----BEGIN CERTIFICATE-----
+
+and end with
+
+-----END CERTIFICATE-----
+
+Finally, to check it is not corrupted, get hold of openssl and print its details using
+
+openssl x509 -in "C:\Users\abc\abc.pem" -text
+
+------------solution 2:
+
+I changed 3 things and then it works:
+
+There is a column of spaces, I removed them
+Changed the line break from windows CRLF to linux LF
+Removed the empty line at the e
+
+
+-----------------
+6360682223
+
+C:\Users\abc>openssl x509 -in "C:\Users\abc\abc.pem" -text
+'openssl' is not recognized as an internal or external command,
+operable program or batch file.
+
+=************************************************************************************
+
+"C:\Program Files (x86)\Java\jre1.8.0_201\bin\keytool" -printcert -v -file "C:\Users\abc\abc.pem"
+"C:\Program Files (x86)\Java\jre1.8.0_201\bin\keytool" -list -storepass cert1pwd -keystore "C:\Users\abc\keystore.jks"
+
+Convert pem to Der/add to jks
+----------------------------
+openssl pkcs8 -topk8 -nocrypt -in pkey.pem -inform PEM -out pkey.der -outform DER
+keytool -import -alias *alias* -keystore cacerts -file *cert.pem*
+
+---First, convert your certificate in a DER format :
+	openssl x509 -outform der -in certificate.pem -out certificate.der
+
+openssl x509 -outform der -in "C:\Users\abc\abc.pem" -out "C:\Users\abc\abc.der"
+
+----And after, import it in the keystore :
+	keytool -import -alias your-alias -keystore cacerts -file certificate.der
+
+**************************************OPENSSL***********************************
+
+Downlaod from :
+http://slproweb.com/products/Win32OpenSSL.html
+
+>set RANDFILE=c:\certificate\.md
+set OPENSSL_CONF="C:\Program Files\OpenSSL-Win64\bin\cnf\openssl.cnf"
+
+---------TO OPEN -------------
+goto: 
+"C:\Program Files\OpenSSL-Win64\bin\openssl.exe"
+
+unable to load certificate
+10636:error:0909006C:PEM routines:get_name:no start line:crypto\pem\pem_lib.c:745:Expecting: TRUSTED CERTIFICATE
+error in x509
+
+
+https://stackoverflow.com/questions/49332235/error0906d06cpem-routinespem-read-biono-start
+https://stackoverflow.com/questions/20837161/openssl-pem-routinespem-read-biono-start-linepem-lib-c703expecting-truste
+https://www.digicert.com/kb/ssl-support/openssl-quick-reference-guide.htm
+http://slproweb.com/products/Win32OpenSSL.html
